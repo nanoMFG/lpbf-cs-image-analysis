@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage import util
 import cv2
+from skimage import util
 from skimage.segmentation import (morphological_chan_vese,
                                   morphological_geodesic_active_contour,
                                   inverse_gaussian_gradient,
