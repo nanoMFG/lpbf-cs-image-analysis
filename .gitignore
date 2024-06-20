@@ -175,3 +175,6 @@ data/*_mask.png
 ./paper
 paper/*
 paper/*/*
+
+.vscode/
+.vscode/*
