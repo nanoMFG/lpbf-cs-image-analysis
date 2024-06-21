@@ -161,7 +161,20 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Generated masks
+data/*_mask.png
+*_mask.png
+*/*_mask.png
+
 # MacOS
 .DS_Store
 */.DS_Store
 */*/.DS_Store
+
+# Paper Figures
+./paper
+paper/*
+paper/*/*
+
+.vscode/
+.vscode/*
