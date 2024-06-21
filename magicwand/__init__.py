@@ -16,7 +16,9 @@ def _find_exterior_contours(img):
 
 
 class SelectionWindow:
-    def __init__(self, img, name="Magic Wand Selector", connectivity=4, tolerance=20, radius=15):
+    def __init__(
+        self, img, name="Magic Wand Selector", connectivity=4, tolerance=20, radius=15
+    ):
         self.name = name
         h, w = img.shape[:2]
         self.img = img
@@ -32,7 +34,11 @@ class SelectionWindow:
             "Tolerance", self.name, tolerance, 255, self._tolerance_trackbar_callback
         )
         cv.createTrackbar(
-            "Paint radius", self.name, radius, min(h, w)//2, self._radius_trackbar_callback
+            "Paint radius",
+            self.name,
+            radius,
+            min(h, w) // 2,
+            self._radius_trackbar_callback,
         )
         cv.setMouseCallback(self.name, self._mouse_callback)
         self.filling = False
@@ -46,11 +52,11 @@ class SelectionWindow:
 
     def _mouse_callback(self, event, x, y, flags, *userdata):
 
-        if event == cv.EVENT_LBUTTONDOWN: # LEFT CLICK: start filling
+        if event == cv.EVENT_LBUTTONDOWN:  # LEFT CLICK: start filling
             self.filling = True
             self._flood_mask[:] = 0
 
-        elif event == cv.EVENT_RBUTTONDOWN: # RIGHT CLICK: start painting
+        elif event == cv.EVENT_RBUTTONDOWN:  # RIGHT CLICK: start painting
             self.painting = True
             self._flood_mask[:] = 0
 
@@ -69,13 +75,13 @@ class SelectionWindow:
 
                 modifier = flags & (ALT_KEY + SHIFT_KEY)
 
-                if modifier ==  SHIFT_KEY: # SHIFT+CLICK to erase
+                if modifier == SHIFT_KEY:  # SHIFT+CLICK to erase
                     self.mask = cv.bitwise_and(self.mask, cv.bitwise_not(flood_mask))
-                elif modifier == ALT_KEY: # ALT+CLICK to restart
+                elif modifier == ALT_KEY:  # ALT+CLICK to restart
                     self.mask = flood_mask
-                else: # LCLICK to continue floodfill
+                else:  # LCLICK to continue floodfill
                     self.mask = cv.bitwise_or(self.mask, flood_mask)
-                
+
                 self._update()
 
             if self.painting == True:
@@ -83,22 +89,24 @@ class SelectionWindow:
                     self._flood_mask,
                     (x, y),
                     self.radius,
-                    255, 
+                    255,
                     -1,
                 )
                 flood_mask = self._flood_mask[1:-1, 1:-1].copy()
 
                 modifier = flags & (ALT_KEY + SHIFT_KEY)
 
-                if modifier ==  SHIFT_KEY: # SHIFT+CLICK to erase
+                if modifier == SHIFT_KEY:  # SHIFT+CLICK to erase
                     self.mask = cv.bitwise_and(self.mask, cv.bitwise_not(flood_mask))
-                elif modifier == ALT_KEY: # ALT+CLICK to restart
+                elif modifier == ALT_KEY:  # ALT+CLICK to restart
                     self.mask = flood_mask
-                elif modifier == (ALT_KEY + SHIFT_KEY): # ALT+SHIFT+CLICK to get intersection
+                elif modifier == (
+                    ALT_KEY + SHIFT_KEY
+                ):  # ALT+SHIFT+CLICK to get intersection
                     self.mask = cv.bitwise_and(self.mask, flood_mask)
-                else: # RCLICK to continue painting
+                else:  # RCLICK to continue painting
                     self.mask = cv.bitwise_or(self.mask, flood_mask)
-                
+
                 self._update()
         elif event == cv.EVENT_LBUTTONUP:
             self.filling = False
@@ -115,13 +123,15 @@ class SelectionWindow:
 
             modifier = flags & (ALT_KEY + SHIFT_KEY)
 
-            if modifier ==  SHIFT_KEY: # SHIFT+CLICK to erase
+            if modifier == SHIFT_KEY:  # SHIFT+CLICK to erase
                 self.mask = cv.bitwise_and(self.mask, cv.bitwise_not(flood_mask))
-            elif modifier == ALT_KEY: # ALT+CLICK to restart
+            elif modifier == ALT_KEY:  # ALT+CLICK to restart
                 self.mask = flood_mask
-            elif modifier == (ALT_KEY + SHIFT_KEY): # ALT+SHIFT+CLICK to get intersection
+            elif modifier == (
+                ALT_KEY + SHIFT_KEY
+            ):  # ALT+SHIFT+CLICK to get intersection
                 self.mask = cv.bitwise_and(self.mask, flood_mask)
-            else: # LCLICK to continue floodfill
+            else:  # LCLICK to continue floodfill
                 self.mask = cv.bitwise_or(self.mask, flood_mask)
             self._update()
 
@@ -131,22 +141,24 @@ class SelectionWindow:
                 self._flood_mask,
                 (x, y),
                 self.radius,
-                255, 
+                255,
                 -1,
             )
             flood_mask = self._flood_mask[1:-1, 1:-1].copy()
 
             modifier = flags & (ALT_KEY + SHIFT_KEY)
 
-            if modifier ==  SHIFT_KEY: # SHIFT+LCLICK to erase
+            if modifier == SHIFT_KEY:  # SHIFT+LCLICK to erase
                 self.mask = cv.bitwise_and(self.mask, cv.bitwise_not(flood_mask))
-            elif modifier == ALT_KEY: # ALT+LCLICK to restart
+            elif modifier == ALT_KEY:  # ALT+LCLICK to restart
                 self.mask = flood_mask
-            elif modifier == (ALT_KEY + SHIFT_KEY): # ALT+SHIFT+CLICK to get intersection
+            elif modifier == (
+                ALT_KEY + SHIFT_KEY
+            ):  # ALT+SHIFT+CLICK to get intersection
                 self.mask = cv.bitwise_and(self.mask, flood_mask)
-            else: # RCLICK to continue painting
+            else:  # RCLICK to continue painting
                 self.mask = cv.bitwise_or(self.mask, flood_mask)
-            
+
             self._update()
 
         # elif event == cv.EVENT_MBUTTONDOWN: # click Middle button to save mask
@@ -166,7 +178,7 @@ class SelectionWindow:
         contours = _find_exterior_contours(self.mask)
         viz = cv.drawContours(viz, contours, -1, color=(255,) * 3, thickness=-1)
         viz = cv.addWeighted(self.img, 0.75, viz, 0.25, 0)
-        viz = cv.drawContours(viz, contours, -1, color=(255, 0, 0) , thickness=2)
+        viz = cv.drawContours(viz, contours, -1, color=(255, 0, 0), thickness=2)
 
         self.mean, self.stddev = cv.meanStdDev(self.img, mask=self.mask)
         meanstr = "mean=({:.2f}, {:.2f}, {:.2f})".format(*self.mean[:, 0])
