@@ -167,16 +167,16 @@ data/*_mask.png
 */*_mask.png
 output.zip
 */output/*
+requirements.txt
 
-# MacOS
+# MacOS & Windows
 .DS_Store
 */.DS_Store
 */*/.DS_Store
+.vscode/
+.vscode/*
 
 # Paper Figures
 ./paper
 paper/*
 paper/*/*
-
-.vscode/
-.vscode/*

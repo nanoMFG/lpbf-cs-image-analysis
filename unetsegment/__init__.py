@@ -10,7 +10,28 @@ from sklearn.preprocessing import StandardScaler
 
 
 def get_prediction(imagep, modelp, encoding="Image"):
+    """
+    Predicts the scale bar details and the binary image from the given image using the provided model.
 
+    This function reads an image, converts it to grayscale, and uses OCR to extract text from the image.
+    It then finds contours in the binary image and calculates the scale bar details. The function also
+    predicts the binary image using the provided model.
+
+    Parameters:
+    imagep (str): The path to the input image.
+    modelp (str or keras.Model): The path to the model or the model itself.
+    encoding (str, optional): The type of encoding for the output image. It can be either "Image" (PIL Image) or "ndarray" (numpy ndarray). Defaults to "Image".
+
+    Returns:
+    tuple: A tuple containing the following elements:
+        - new_pred (PIL.Image.Image or numpy.ndarray): The predicted binary image.
+        - img_in (numpy.ndarray): The original input image.
+        - um_per_pixel (float): The micrometers per pixel value calculated from the scale bar.
+        - error_string (str): A string containing error messages if any errors occurred during the process.
+
+    Raises:
+    ValueError: If the encoding is not either "Image" or "ndarray".
+    """
     if type(modelp) == str:
         model = load_model(modelp)  # load the model
     else:
@@ -80,6 +101,28 @@ def get_prediction(imagep, modelp, encoding="Image"):
 
 
 def get_metrics(prediction):
+    """
+    Calculate the metrics of the largest contour in a binary image.
+
+    This function finds contours in the input binary image, sorts them by area in descending order,
+    and calculates the area, width, height, and the top-left coordinates (x1, y1) of the bounding rectangle
+    of the largest contour.
+
+    Parameters:
+    prediction (numpy.ndarray): A binary image where the contours are to be found.
+
+    Returns:
+    tuple: A tuple containing the following elements:
+        - area (float): The area of the largest contour.
+        - width (int): The width of the bounding rectangle of the largest contour.
+        - height (int): The height of the bounding rectangle of the largest contour.
+        - x1 (int): The x-coordinate of the top-left corner of the bounding rectangle of the largest contour.
+        - y1 (int): The y-coordinate of the top-left corner of the bounding rectangle of the largest contour.
+        - contour (numpy.ndarray): The largest contour.
+
+    Note:
+    If no contours are found in the image, all output values except 'contour' will be None, and 'contour' will be an empty list.
+    """
     area, width, height, x1, y1 = [
         None,
     ] * 5
@@ -100,10 +143,23 @@ def get_metrics(prediction):
 
 def get_baseline(img_in, prediction, contour, x1, y1, w, h):
     """
-    img_in = np.array
-    prediction = PIL.Image
-    contour = np.array
-    x1, y1, w, h = int, int, int, int
+    Calculates the baseline of the melt pool in the image.
+
+    This function takes an image and a prediction mask, and calculates the baseline of the melt pool.
+    It uses edge detection and regression to find the interface line, and identifies the common points between
+    the melt pool boundary and the interface.
+
+    Parameters:
+    img_in (numpy.ndarray): The input image.
+    prediction (PIL.Image.Image): The prediction mask.
+    contour (numpy.ndarray): The contour of the melt pool.
+    x1, y1, w, h (int): The x and y coordinates, width, and height of the bounding rectangle of the melt pool.
+
+    Returns:
+    tuple: A tuple containing the following elements:
+        - y_split (int or None): The y-coordinate of the split between the top and bottom of the melt pool.
+        - common_points (numpy.ndarray or None): The common points between the melt pool boundary and the interface.
+        - model_dict (dict): A dictionary containing the regression model and the scalers used for standardization.
     """
     # make scalebar dark
     image = np.where(img_in == 255, 0, img_in)
@@ -204,6 +260,21 @@ def get_baseline(img_in, prediction, contour, x1, y1, w, h):
 
 
 def get_mask(image_path, model):
+    """
+    Generates a prediction mask and calculates the metrics of the melt pool.
+
+    This function takes an image path and a model, generates a prediction mask for the image, and calculates
+    the metrics of the melt pool, including the width, height, and scale.
+
+    Parameters:
+    image_path (str): The path to the input image.
+    model (keras.Model): The model used for prediction.
+
+    Returns:
+    tuple: A tuple containing the following elements:
+        - prediction (PIL.Image.Image): The prediction mask.
+        - metrics (tuple): A tuple containing the metrics of the melt pool, including the width, height, and scale.
+    """
     prediction, raw_image, um_per_pixel, errors = get_prediction(image_path, model)
     area, width, height, x1, y1, contour = get_metrics(prediction)
     y_split, end_points, baseline_model_dict = get_baseline(
@@ -221,5 +292,5 @@ def get_mask(image_path, model):
     else:
         ha = height
         hb = None
-    w, alpha, beta, scale = width, None, None, um_per_pixel  # Dummy metrics
+    w, alpha, beta, scale = width, None, None, um_per_pixel  # `None` for angles
     return prediction, (w, ha, hb, alpha, beta, scale)
