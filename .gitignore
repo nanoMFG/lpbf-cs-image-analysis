@@ -161,10 +161,12 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Generated masks
+# Generated masks & outputs
 data/*_mask.png
 *_mask.png
 */*_mask.png
+output.zip
+*/output/*
 
 # MacOS
 .DS_Store
