@@ -1,7 +1,14 @@
 # lpbf-cs-image-analysis
 Master repo for analysis of cross sectional images of LPBF melt tracks. 
 
-## Getting Started
+# Quicklinks
+[Getting Started](#getting-started) \
+[mgac](#mgac) \
+[magicwand](#magicwand) \
+[unetsegment](#unetsegment)
+
+
+# Getting Started
 
 Install into a Python virtual environment, as you would any other Python project.
 
@@ -27,7 +34,7 @@ $ cd lpbf-cs-image-analysis
 $ pip install .
 ```
 
-## mgac
+# mgac
 
 Tool for image segmentation using active contours. 
 
@@ -35,7 +42,7 @@ Displays the image. A user can then click and drag to build an initialisation el
 
 ![mgac Example Image](data/mgac_example_window.png)
 
-### Usage
+## Usage
 
 As a script, just run the module directly as below.
 ```sh
@@ -77,7 +84,7 @@ Use inside your own Python projects.
 
 Refer to [playbook.ipynb](playbook.ipynb) for more information. 
 
-## magicwand
+# magicwand
 
 Flood filling and paint filling masking tool.
 
@@ -87,7 +94,7 @@ Displays an image with a tolerance trackbar and a paint radius trackbar. A user 
 
 ![magicwand Example Image](data/magicwand_example_window.png)
 
-### Usage
+## Usage
 
 As a script, just run the module directly as below.
 
@@ -140,4 +147,179 @@ The window object has a few properties you might be interested in after successf
 >>> window.stddev   # standard deviation for each channel - from cv.meanStdDev(img, mask)
 >>> window.mask     # mask from cv.floodFill()
 >>> window.img      # image input into the window
+```
+# unetsegment
+
+Tool to segment cross-sectional images of LPBF melt pools using a pre-trained TensorFlow model. 
+
+The tool uses a pre-trained model to segment a single image or a batch of images. The software also calculates the following metrics for each image:
+1. Width of melt pool (in pixels)
+2. Height of melt pool above the baseline (in pixels)
+3. Height of melt pool below the baseline (in pixels)
+4. Wetting angle above the baseline
+5. Wetting angle below the baseline
+6. Scale of the image, if possible (in $\mu m$/pixel)
+
+All the output masks and metrics can be saved as a zip file. 
+
+Note: Angle calculation may not be completely accurate. 
+
+![unetsegment Example Image](data/unetsegment_example_window.png)
+
+## Usage
+
+As a script, just run the module directly as below.
+```sh
+(venv) $ python3 -m unetsegment
+```
+- Select a pre-trained model file.
+- Select the mode: Single Image or Batch Mode
+- If in `Single Image` mode:
+  - Select a single image file.
+- If in `Batch Mode`: 
+  - Select a directory containing images. All image files within the directory will be segmented.
+- The input display will show only one image, but the status will mention how many images have been detected. 
+- Select the `Segment` button to segment the image(s). The status label will keep updating as images are segmented. 
+- Select `Save Output` to save the output mask(s) and metrics to a zip file called `output.zip`.
+
+You can always check the --help flag when running the module as a script for more info:
+```sh
+usage: LPBF CS Image segmentation using UNet [-h] [--image IMAGE]
+
+options:
+  -h, --help     show this help message and exit
+  --image IMAGE  path to image
+```
+
+You can set the `LPBFSEGMENT_MODEL` environment variable to the path of your model file. If it exists, it will be used as the default value for the Model Path.
+
+Here's how you can set this environment variable on different operating systems:
+
+**Windows:**
+
+Open Command Prompt and type:
+
+```cmd
+setx LPBFSEGMENT_MODEL "path\to\your\model"
+```
+
+**MacOS/Linux:**
+
+Open Terminal and type:
+
+```shell
+export LPBFSEGMENT_MODEL="path/to/your/model"
+```
+
+Note: These commands will set the `LPBFSEGMENT_MODEL` environment variable for your current session. If you want to set it permanently, you may need to add these commands to your system's startup script (like `.bashrc`, `.bash_profile`, or `.zshrc` for Unix-based systems or `Environment Variables` on Windows).
+
+Use inside your own Python projects:
+
+```python
+>>> from unetsegment import get_mask
+>>> import matplotlib.pyplot as plt
+>>> 
+>>> image_path = "example.jpg"
+>>> model_path = "model.hdf5"
+>>>
+>>> mask, metrics = get_mask(image_path, self.model)
+>>> 
+>>> print(f"width, height_above, height_below, alpha, beta, scale: {metrics}.")
+>>> plt.imshow(mask, cmap='gray')
+```
+
+The other functions that you can import are:
+```python
+def get_prediction(imagep, modelp, encoding="Image"):
+'''
+Parameters:
+imagep (str): The path to the input image.
+modelp (str or keras.Model): The path to the model or the model itself.
+encoding (str, optional): The type of encoding for the output image. It can be either "Image" (PIL Image) or "ndarray" (numpy ndarray). Defaults to "Image".
+
+Returns:
+tuple: A tuple containing the following elements:
+    - new_pred (PIL.Image.Image or numpy.ndarray): The predicted binary image.
+    - img_in (numpy.ndarray): The original input image.
+    - um_per_pixel (float): The micrometers per pixel value calculated from the scale bar.
+    - error_string (str): A string containing error messages if any errors occurred during the process.
+'''
+```
+```python
+def get_metrics(prediction):
+'''
+Parameters:
+prediction (numpy.ndarray): A binary image where the contours are to be found.
+
+Returns:
+tuple: A tuple containing the following elements:
+    - area (float): The area of the largest contour.
+    - width (int): The width of the bounding rectangle of the largest contour.
+    - height (int): The height of the bounding rectangle of the largest contour.
+    - x1 (int): The x-coordinate of the top-left corner of the bounding rectangle of the largest contour.
+    - y1 (int): The y-coordinate of the top-left corner of the bounding rectangle of the largest contour.
+    - contour (numpy.ndarray): The largest contour.
+
+Note:
+If no contours are found in the image, all output values except 'contour' will be None, and 'contour' will be an empty list.
+'''
+```
+```python
+def get_baseline(img_in, prediction, contour, x1, y1, w, h):
+'''
+Parameters:
+img_in (numpy.ndarray): The input image.
+prediction (PIL.Image.Image): The prediction mask.
+contour (numpy.ndarray): The contour of the melt pool.
+x1, y1, w, h (int): The x and y coordinates, width, and height of the bounding rectangle of the melt pool.
+
+Returns:
+tuple: A tuple containing the following elements:
+    - y_split (int or None): The y-coordinate of the split between the top and bottom of the melt pool.
+    - common_points (numpy.ndarray or None): The common points between the melt pool boundary and the interface.
+    - model_dict (dict): A dictionary containing the regression model and the scalers used for standardization.
+'''
+```
+```python
+def get_tangent(point_index, blob_contour, direction, window=200):
+'''
+Parameters:
+point_index (int): The index of the point on the contour.
+blob_contour (numpy.ndarray): The contour of the melt pool.
+window (int, optional): The size of the window around the point. Defaults to 200.
+
+Returns:
+tuple: A tuple containing the following elements:
+    - slope (float): The slope of the tangent line.
+    - intercept (float): The y-intercept of the tangent line.
+'''
+```
+```python
+def get_angles(contour, baseline_model_dict, end_points, window=200):
+'''
+Parameters:
+contour (np.array): The contour for which to calculate the angles.
+baseline_model_dict (dict): A dictionary containing the slope and intercept of the baseline. If either the slope or intercept is None, the function will use the end_points to calculate them.
+end_points (np.array): A 2D array containing the x and y coordinates of the endpoints of the contour. If the baseline_model_dict does not contain valid slope and intercept, these points will be used to calculate them.
+window (int, optional): The size of the window to use when calculating the tangent lines. Default is 200.
+
+Returns:
+tuple: A tuple containing the following elements:
+    - alpha_l (float): The angle between the baseline and the upper tangent line at the left endpoint.
+    - beta_l (float): The angle between the baseline and the lower tangent line at the left endpoint.
+    - alpha_r (float): The angle between the baseline and the upper tangent line at the right endpoint.
+    - beta_r (float): The angle between the baseline and the lower tangent line at the right endpoint.
+    - line_params (dict): A dictionary containing the slopes and intercepts of all lines calculated in the function.
+'''
+```
+```python
+def make_angle_image(img_in, line_params):
+'''
+Parameters:
+img_in (np.array): The input image on which to overlay the lines.
+line_params (dict): A dictionary containing the slopes and intercepts of the lines to be drawn. The keys should be 'slope_base', 'intercept_base', 'slope_alpha_l', 'intercept_alpha_l', 'slope_beta_l', 'intercept_beta_l', 'slope_alpha_r', 'intercept_alpha_r', 'slope_beta_r', and 'intercept_beta_r'.
+
+Returns:
+np.array: The input image with the lines overlaid.
+'''
 ```
