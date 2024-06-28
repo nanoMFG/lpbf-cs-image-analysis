@@ -156,9 +156,13 @@ The tool uses a pre-trained model to segment a single image or a batch of images
 1. Width of melt pool (in pixels)
 2. Height of melt pool above the baseline (in pixels)
 3. Height of melt pool below the baseline (in pixels)
-4. Scale of the image, if possible (in $\mu m$/pixel)
+4. Wetting angle above the baseline
+5. Wetting angle below the baseline
+6. Scale of the image, if possible (in $\mu m$/pixel)
 
 All the output masks and metrics can be saved as a zip file. 
+
+Note: Angle calculation may not be completely accurate. 
 
 ![unetsegment Example Image](data/unetsegment_example_window.png)
 
@@ -274,5 +278,48 @@ tuple: A tuple containing the following elements:
     - y_split (int or None): The y-coordinate of the split between the top and bottom of the melt pool.
     - common_points (numpy.ndarray or None): The common points between the melt pool boundary and the interface.
     - model_dict (dict): A dictionary containing the regression model and the scalers used for standardization.
+'''
+```
+```python
+def get_tangent(point_index, blob_contour, direction, window=200):
+'''
+Parameters:
+point_index (int): The index of the point on the contour.
+blob_contour (numpy.ndarray): The contour of the melt pool.
+window (int, optional): The size of the window around the point. Defaults to 200.
+
+Returns:
+tuple: A tuple containing the following elements:
+    - slope (float): The slope of the tangent line.
+    - intercept (float): The y-intercept of the tangent line.
+'''
+```
+```python
+def get_angles(contour, baseline_model_dict, end_points, window=200):
+'''
+Parameters:
+contour (np.array): The contour for which to calculate the angles.
+baseline_model_dict (dict): A dictionary containing the slope and intercept of the baseline. If either the slope or intercept is None, the function will use the end_points to calculate them.
+end_points (np.array): A 2D array containing the x and y coordinates of the endpoints of the contour. If the baseline_model_dict does not contain valid slope and intercept, these points will be used to calculate them.
+window (int, optional): The size of the window to use when calculating the tangent lines. Default is 200.
+
+Returns:
+tuple: A tuple containing the following elements:
+    - alpha_l (float): The angle between the baseline and the upper tangent line at the left endpoint.
+    - beta_l (float): The angle between the baseline and the lower tangent line at the left endpoint.
+    - alpha_r (float): The angle between the baseline and the upper tangent line at the right endpoint.
+    - beta_r (float): The angle between the baseline and the lower tangent line at the right endpoint.
+    - line_params (dict): A dictionary containing the slopes and intercepts of all lines calculated in the function.
+'''
+```
+```python
+def make_angle_image(img_in, line_params):
+'''
+Parameters:
+img_in (np.array): The input image on which to overlay the lines.
+line_params (dict): A dictionary containing the slopes and intercepts of the lines to be drawn. The keys should be 'slope_base', 'intercept_base', 'slope_alpha_l', 'intercept_alpha_l', 'slope_beta_l', 'intercept_beta_l', 'slope_alpha_r', 'intercept_alpha_r', 'slope_beta_r', and 'intercept_beta_r'.
+
+Returns:
+np.array: The input image with the lines overlaid.
 '''
 ```

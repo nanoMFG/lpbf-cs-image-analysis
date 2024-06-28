@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import cv2
 import pytesseract
 import re
+import math
 from sklearn.linear_model import HuberRegressor
 from sklearn.preprocessing import StandardScaler
 
@@ -233,6 +234,8 @@ def get_baseline(img_in, prediction, contour, x1, y1, w, h):
     inter_model.fit(inter_x_train, inter_y_train.ravel())
 
     y_split = None
+    slope = None
+    intercept = None
     if common_points is not None:
         inter_test_x = common_points[:, 0].reshape(-1, 1)
         inter_test_y = common_points[:, 1].reshape(-1, 1)
@@ -247,6 +250,11 @@ def get_baseline(img_in, prediction, contour, x1, y1, w, h):
                     ).reshape(-1, 1)
                 )[0, 0]
             )
+            y_at_01 = inter_y_scaler.inverse_transform(
+                inter_model.predict(inter_x_scaler.transform([[0], [1]])).reshape(-1, 1)
+            ).ravel()
+            slope = y_at_01[1] - y_at_01[0]
+            intercept = y_at_01[0]
         else:
             y_split = int(common_points[:, 1].mean())
     # organise all model information
@@ -254,6 +262,8 @@ def get_baseline(img_in, prediction, contour, x1, y1, w, h):
         "model": inter_model,
         "x_scaler": inter_x_scaler,
         "y_scaler": inter_y_scaler,
+        "slope": slope,
+        "intercept": intercept,
     }
 
     return y_split, common_points, model_dict
@@ -275,8 +285,11 @@ def get_mask(image_path, model):
         - prediction (PIL.Image.Image): The prediction mask.
         - metrics (tuple): A tuple containing the metrics of the melt pool, including the width, height, and scale.
     """
+    # Step 1: Get the prediction mask and scale
     prediction, raw_image, um_per_pixel, errors = get_prediction(image_path, model)
+    # Step 2: Get the metrics of the melt pool
     area, width, height, x1, y1, contour = get_metrics(prediction)
+    # Step 3: Get the baseline of the melt pool
     y_split, end_points, baseline_model_dict = get_baseline(
         cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY),
         prediction,
@@ -286,11 +299,191 @@ def get_mask(image_path, model):
         width,
         height,
     )
+    # Step 4: Split the height into above and below the baseline
     if y_split is not None:
         ha = y_split - y1
         hb = height - ha
     else:
         ha = height
         hb = None
-    w, alpha, beta, scale = width, None, None, um_per_pixel  # `None` for angles
+    # Step 5: Get the angles of the melt pool
+    alpha_l, beta_l, alpha_r, beta_r, line_params = get_angles(
+        contour, baseline_model_dict, end_points
+    )
+    # Step 6: Build image with angle lines (not yet ready to be displayed or saved)
+    # angle_image = make_angle_image(raw_image, line_params)
+    w, alpha, beta, scale = (
+        width,
+        np.mean([alpha_l, alpha_r]),
+        np.mean([beta_l, beta_r]),
+        um_per_pixel,
+    )
     return prediction, (w, ha, hb, alpha, beta, scale)
+
+
+def get_tangent(point_index, blob_contour, direction, window=200):
+    """
+    Calculate the tangent of the melt pool boundary at a given point.
+
+    This function calculates the tangent of the melt pool boundary at a given point
+    by fitting a line to the points in a window around the given point.
+
+    Parameters:
+    point_index (int): The index of the point on the contour.
+    blob_contour (numpy.ndarray): The contour of the melt pool.
+    window (int, optional): The size of the window around the point. Defaults to 200.
+
+    Returns:
+    tuple: A tuple containing the following elements:
+        - slope (float): The slope of the tangent line.
+        - intercept (float): The y-intercept of the tangent line.
+    """
+    multiplier = 1 if point_index < blob_contour.shape[0] // 2 else -1
+    # print(multiplier)
+    if direction == "upper":
+        multiplier = -1 * multiplier
+    prev_point = blob_contour[(point_index) % len(blob_contour)]
+    next_point = blob_contour[
+        (point_index + multiplier * window // 20) % len(blob_contour)
+    ]
+    slope = (next_point[1] - prev_point[1]) / (next_point[0] - prev_point[0])
+    intercept = prev_point[1] - slope * prev_point[0]
+    return slope, intercept
+
+
+def angle_between_lines(slope_baseline, slope_tangent):
+    tan_theta = (slope_tangent - slope_baseline) / (1 + slope_tangent * slope_baseline)
+    theta = math.atan(tan_theta)
+    angle = math.degrees(theta) % 180
+    return angle
+
+
+def make_angle_image(img_in, line_params):
+    """
+    Overlay lines on an image based on provided line parameters.
+
+    Parameters:
+    img_in (np.array): The input image on which to overlay the lines.
+    line_params (dict): A dictionary containing the slopes and intercepts of the lines to be drawn. The keys should be 'slope_base', 'intercept_base', 'slope_alpha_l', 'intercept_alpha_l', 'slope_beta_l', 'intercept_beta_l', 'slope_alpha_r', 'intercept_alpha_r', 'slope_beta_r', and 'intercept_beta_r'.
+
+    Returns:
+    np.array: The input image with the lines overlaid.
+    """
+    img_overlay = img_in
+
+    x = np.array([0, img_overlay.shape[1]])
+    y_base = line_params["slope_base"] * x + line_params["intercept_base"]
+    y_a_l = line_params["slope_alpha_l"] * x + line_params["intercept_alpha_l"]
+    y_b_l = line_params["slope_beta_l"] * x + line_params["intercept_beta_l"]
+    y_a_r = line_params["slope_alpha_r"] * x + line_params["intercept_alpha_r"]
+    y_b_r = line_params["slope_beta_r"] * x + line_params["intercept_beta_r"]
+
+    cv2.line(
+        img_overlay, (x[0], int(y_base[0])), (x[1], int(y_base[1])), (255, 0, 0), 4
+    )  # red line
+    cv2.line(
+        img_overlay, (x[0], int(y_a_l[0])), (x[1], int(y_a_l[1])), (0, 255, 0), 4
+    )  # cyan alpha line
+    cv2.line(
+        img_overlay, (x[0], int(y_b_l[0])), (x[1], int(y_b_l[1])), (0, 0, 255), 4
+    )  # magenta beta line
+    cv2.line(
+        img_overlay, (x[0], int(y_a_r[0])), (x[1], int(y_a_r[1])), (0, 255, 0), 4
+    )  # green alpha line
+    cv2.line(
+        img_overlay, (x[0], int(y_b_r[0])), (x[1], int(y_b_r[1])), (0, 0, 255), 4
+    )  # blue beta line
+
+    return img_overlay
+
+
+def get_angles(contour, baseline_model_dict, end_points, window=200):
+    """
+    Calculate the angles between the baseline and the tangent lines at the endpoints of a contour.
+
+    Parameters:
+    contour (np.array): The contour for which to calculate the angles.
+    baseline_model_dict (dict): A dictionary containing the slope and intercept of the baseline. If either the slope or intercept is None, the function will use the end_points to calculate them.
+    end_points (np.array): A 2D array containing the x and y coordinates of the endpoints of the contour. If the baseline_model_dict does not contain valid slope and intercept, these points will be used to calculate them.
+    window (int, optional): The size of the window to use when calculating the tangent lines. Default is 200.
+
+    Returns:
+    tuple: A tuple containing the following elements:
+        - alpha_l (float): The angle between the baseline and the upper tangent line at the left endpoint.
+        - beta_l (float): The angle between the baseline and the lower tangent line at the left endpoint.
+        - alpha_r (float): The angle between the baseline and the upper tangent line at the right endpoint.
+        - beta_r (float): The angle between the baseline and the lower tangent line at the right endpoint.
+        - line_params (dict): A dictionary containing the slopes and intercepts of all lines calculated in the function.
+    """
+    blob_contour = contour[:, 0, :]
+
+    # Red line
+    if (
+        baseline_model_dict["slope"] is None or baseline_model_dict["intercept"] is None
+    ) and end_points is None:
+        print("No baseline info found")
+        # print("Mode 1: No baseline info found")
+        return None, None, None, None, None
+    elif (
+        baseline_model_dict["slope"] is None or baseline_model_dict["intercept"] is None
+    ) and end_points is not None:
+        slope_base, intercept_base = np.polyfit(end_points[:, 0], end_points[:, 1], 1)
+        # print("Mode 2: End points used")
+    else:
+        slope_base, intercept_base = (
+            baseline_model_dict["slope"],
+            baseline_model_dict["intercept"],
+        )
+        # print("Mode 3: Baseline model used")
+
+    # For left point
+    point = end_points[0]
+    point_index_l = np.argmin(
+        np.sum((blob_contour - point) ** 2, axis=1)
+    )  # find the points on the contour closest to the end points
+
+    # alpha line
+    slope_alpha_l, intercept_alpha_l = get_tangent(
+        point_index_l, blob_contour, "upper", window
+    )
+
+    # Beta line
+    slope_beta_l, intercept_beta_l = get_tangent(
+        point_index_l, blob_contour, "lower", window
+    )
+
+    # For right point
+    point = end_points[1]
+    point_index_r = np.argmin(
+        np.sum((blob_contour - point) ** 2, axis=1)
+    )  # find the points on the contour closest to the end points
+
+    # alpha line
+    slope_alpha_r, intercept_alpha_r = get_tangent(
+        point_index_r, blob_contour, "upper", window
+    )
+
+    # Beta line
+    slope_beta_r, intercept_beta_r = get_tangent(
+        point_index_r, blob_contour, "lower", window
+    )
+
+    alpha_l = angle_between_lines(slope_alpha_l, slope_base)
+    beta_l = angle_between_lines(slope_base, slope_beta_l)
+    alpha_r = angle_between_lines(slope_base, slope_alpha_r)
+    beta_r = angle_between_lines(slope_beta_r, slope_base)
+
+    line_params = {
+        "slope_base": slope_base,
+        "intercept_base": intercept_base,
+        "slope_alpha_l": slope_alpha_l,
+        "intercept_alpha_l": intercept_alpha_l,
+        "slope_beta_l": slope_beta_l,
+        "intercept_beta_l": intercept_beta_l,
+        "slope_alpha_r": slope_alpha_r,
+        "intercept_alpha_r": intercept_alpha_r,
+        "slope_beta_r": slope_beta_r,
+        "intercept_beta_r": intercept_beta_r,
+    }
+
+    return alpha_l, beta_l, alpha_r, beta_r, line_params

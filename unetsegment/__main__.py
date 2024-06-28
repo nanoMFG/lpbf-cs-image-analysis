@@ -24,7 +24,7 @@ class UNetSegmentApp:
         )
         self.model_path_entry.grid(row=0, column=1, columnspan=2)
         self.browse_model_button = tk.Button(
-            self.master, text="Browse", command=self.browse_model
+            self.master, text="Browse Model", command=self.browse_model
         )
         self.browse_model_button.grid(row=0, column=3)
 
@@ -50,7 +50,7 @@ class UNetSegmentApp:
         )
         self.image_path_entry.grid(row=2, column=1, columnspan=2)
         self.browse_image_button = tk.Button(
-            master, text="Browse", command=self.browse_image
+            master, text="Browse Image", command=self.browse_image
         )
         self.browse_image_button.grid(row=2, column=3)
 
@@ -113,6 +113,7 @@ class UNetSegmentApp:
                     text=f"Status: {len(self.image_path_list)} images found"
                 )
                 self.segment_button.config(state=tk.NORMAL)
+                self.save_button.config(state=tk.DISABLED)
                 try:
                     img = Image.open(self.image_path_list[0])
                     img.thumbnail((400, 500))
@@ -140,6 +141,7 @@ class UNetSegmentApp:
         if not self.image_path_list or not self.model:
             messagebox.showerror("Error", "No images or model loaded.")
             return
+        self.save_button.config(state=tk.DISABLED)
         self.output_images = []
         self.metrics = []
         for index, image_path in enumerate(self.image_path_list):
@@ -169,7 +171,7 @@ class UNetSegmentApp:
             messagebox.showerror("Error", "No images or model loaded.")
             return
 
-        output_dir = filedialog.askdirectory()
+        output_dir = filedialog.askdirectory(initialdir=os.getcwd())
         if not output_dir:
             return
         if not os.path.exists(os.path.join(output_dir, "tmpdir")):
