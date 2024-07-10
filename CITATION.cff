@@ -4,6 +4,10 @@ authors:
   - family-names: Shah
     given-names: Aagam
     orcid: https://orcid.org/0000-0002-4398-9512
+  - family-names: Ertekin
+    given-names: Elif
+  - family-names: Tawfick
+    given-names: Sameh
 title: "LPBF CS Image Analysis Software"
 version: 1.0.0
 identifiers:
