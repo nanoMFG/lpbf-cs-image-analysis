@@ -312,10 +312,19 @@ def get_mask(image_path, model):
     )
     # Step 6: Build image with angle lines (not yet ready to be displayed or saved)
     # angle_image = make_angle_image(raw_image, line_params)
+    if alpha_l == None or alpha_r == None:
+        alpha_i = None
+    else:
+        alpha_i = np.mean([alpha_l, alpha_r])
+    if beta_l == None or beta_r == None:
+        beta_i = None
+    else:
+        beta_i = np.mean([beta_l, beta_r])
+
     w, alpha, beta, scale = (
         width,
-        np.mean([alpha_l, alpha_r]),
-        np.mean([beta_l, beta_r]),
+        alpha_i,
+        beta_i,
         um_per_pixel,
     )
     return prediction, (w, ha, hb, alpha, beta, scale)

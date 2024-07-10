@@ -33,6 +33,7 @@ $ git clone git@github.com:nanoMFG/lpbf-cs-image-analysis.git
 $ cd lpbf-cs-image-analysis
 $ pip install .
 ```
+Note: While SSH is recommended, use HTTPS to clone and/or install the repository if you do not have your SSH keys setup. 
 
 # mgac
 

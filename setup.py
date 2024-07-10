@@ -16,7 +16,7 @@ setup(
         "pynput",
         "pytesseract",
         "scikit_learn",
-        "tensorflow",
+        "tensorflow!=2.16.1,!=2.16.2",
     ],
     packages=find_packages(),
     description="Master package for analysis of cross sectional images of LPBF melt tracks.",
