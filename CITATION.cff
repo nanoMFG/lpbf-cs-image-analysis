@@ -14,3 +14,4 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.12711063
 date-released: 2024-07-10
+url: "https://github.com/nanoMFG/lpbf-cs-image-analysis"
