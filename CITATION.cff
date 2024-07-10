@@ -1,0 +1,17 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Shah
+    given-names: Aagam
+    orcid: https://orcid.org/0000-0002-4398-9512
+  - family-names: Ertekin
+    given-names: Elif
+  - family-names: Tawfick
+    given-names: Sameh
+title: "LPBF CS Image Analysis Software"
+version: 1.0.0
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.12711063
+date-released: 2024-07-10
+url: "https://github.com/nanoMFG/lpbf-cs-image-analysis"
